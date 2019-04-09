@@ -1,4 +1,6 @@
 import sys
+import re
+import argparse
 from pathlib import Path
 
 import nycdb
@@ -69,17 +71,72 @@ class DatasetCreator:
         )
 
 
-if __name__ == '__main__':
+def is_valid_identifier(path: str) -> bool:
+    '''
+    Returns whether the argument is a valid Python identifier
+    that starts with an alphabetic character or an underscore
+    and contains only alphanumeric characters or underscores
+    thereafter, e.g.:
+
+        >>> is_valid_identifier('boop')
+        True
+        >>> is_valid_identifier('0boop')
+        False
+        >>> is_valid_identifier('_boop')
+        True
+        >>> is_valid_identifier('@#$@!#$')
+        False
+    '''
+
+    return bool(re.match(r'^[A-Za-z_][A-Za-z0-9_]+$', path))
+
+
+def fail(msg: str) -> None:
+    sys.stderr.write(f"{msg}\n")
+    sys.exit(1)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Create scaffolding for a new NYC-DB dataset."
+    )
+    parser.add_argument(
+        'csvfile',
+        help='The CSV file to base the new dataset on.'
+    )
+    parser.add_argument(
+        '--undo',
+        action='store_true',
+        help='Attempt to undo the creation of the scaffolding.'
+    )
+    args = parser.parse_args()
+
+    csvpath = Path(args.csvfile)
+
+    if not is_valid_identifier(csvpath.stem):
+        fail(
+            f"'{csvpath.stem}' can contain only alphanumeric characters/underscores,\n"
+            f"and cannot start with a number."
+        )
+
+    if not csvpath.exists():
+        fail(f"'{csvpath}' does not exist!")
+
     dc = DatasetCreator(
-        name='boop',
+        name=csvpath.stem,
         yaml_code='this is yaml',
         transform_py_code='print("this is python")',
         sql_code='this is sql',
         test_py_code='print("this is test python")'
     )
-    if len(sys.argv) > 1:
+
+    if args.undo:
+        print(f"Undoing scaffolding for dataset '{dc.name}'.")
         dc.undo()
-        print("UNDONE")
     else:
         dc.execute()
-        print("DONE")
+        print(f"Scaffolding created for new dataset '{dc.name}'.")
+
+
+if __name__ == '__main__':
+    main()
