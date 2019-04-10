@@ -55,24 +55,31 @@ class DatasetCreator:
 
     def append_to_file(self, path: Path, text: str) -> None:
         with path.open('a') as f:
+            print(f"Appending to {self.relpath(path)}.")
             f.write(self._with_leading_newlines(text))
 
     def unappend_from_file(self, path: Path, text: str) -> None:
-        path.write_text(
-            path.read_text().replace(
-                self._with_leading_newlines(text),
-                ''
-            )
-        )
+        to_remove = self._with_leading_newlines(text)
+        curr_text = path.read_text()
+        if to_remove in curr_text:
+            print(f"Undoing changes to {self.relpath(path)}.")
+            path.write_text(curr_text.replace(to_remove, ''))
 
     def _with_leading_newlines(self, text: str) -> str:
         return f"\n\n{text}"
 
+    def create_file(self, path: Path, text: str) -> None:
+        print(f"Creating {self.relpath(path)}.")
+        path.write_text(text)
+
+    def relpath(self, path: Path) -> str:
+        return str(path.relative_to(MY_DIR))
+
     def execute(self) -> None:
         self.undo()
-        self.yaml_path.write_text(self.yaml_code)
-        self.sql_path.write_text(self.sql_code)
-        self.test_csv_path.write_text(self.test_csv_text)
+        self.create_file(self.yaml_path, self.yaml_code)
+        self.create_file(self.sql_path, self.sql_code)
+        self.create_file(self.test_csv_path, self.test_csv_text)
         self.append_to_file(TRANSFORMATIONS_PY_PATH, self.transform_py_code)
         self.append_to_file(NYCDB_TEST_PY_PATH, self.test_py_code)
 
@@ -84,6 +91,7 @@ class DatasetCreator:
         ]
         for path in paths:
             if path.exists():
+                print(f"Removing {self.relpath(path)}.")
                 path.unlink()
         self.unappend_from_file(TRANSFORMATIONS_PY_PATH, self.transform_py_code)
         self.unappend_from_file(NYCDB_TEST_PY_PATH, self.test_py_code)
