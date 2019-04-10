@@ -238,7 +238,12 @@ def selftest():
     import random
     import subprocess
 
-    print("Testing myself...")
+    print("Running pytest on myself...")
+
+    subprocess.check_call(['pytest', __file__, '--doctest-modules'])
+
+    print("Creating a temporary CSV and running myself on it...")
+
     i = random.randint(1, 1500000)
     name = f"temptest_{i}"
     tempcsv = MY_DIR / f'{name}.csv'
@@ -255,6 +260,7 @@ def selftest():
         ]
         subprocess.check_call(base_args)
         try:
+            print("Running the test I created for the new dataset...")
             subprocess.check_call([
                 'pytest',
                 str(NYCDB_TEST_PY_PATH),
