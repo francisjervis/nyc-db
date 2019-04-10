@@ -1,3 +1,41 @@
+'''
+    This script makes it easy to create scaffolding for a new
+    NYC-DB dataset based on an input CSV file. Just copy it
+    into the `/src` directory of your NYC-DB repository,
+    open a terminal and run e.g.:
+
+        python create_dataset.py my_data.csv
+
+    This will create all the data files and Python code needed
+    for a new dataset called 'my_data' (or whatever you named
+    your file).
+
+    The scaffolding is just a starting point,
+    however, and you will likely need to tweak things
+    before submitting a pull request.
+
+    ## Undoing things
+
+    If you ran the tool by mistake or something, run e.g.:
+
+        python create_dataset.py my_data.csv --undo
+
+    This will remove all files that were created and
+    un-modify all files that were modified (assuming you
+    haven't already changed them).
+
+    ## Testing
+
+    The script comes with a self-test which creates a simple
+    temporary CSV file, runs itself on the CSV, runs the
+    integration test it created for the new dataset, and
+    then undoes everything it just did.
+
+    To run the self-test, do:
+
+        python create_dataset.py test
+'''
+
 import sys
 import re
 import argparse
@@ -196,6 +234,42 @@ def fail(msg: str) -> None:
     sys.exit(1)
 
 
+def selftest():
+    import random
+    import subprocess
+
+    print("Testing myself...")
+    i = random.randint(1, 1500000)
+    name = f"temptest_{i}"
+    tempcsv = MY_DIR / f'{name}.csv'
+    tempcsv.write_text('\n'.join([
+        'foo,bar,bbl',
+        'a,"hello there",3028850001',
+        'b,"zz zdoj",4028850001'
+    ]))
+    try:
+        base_args = [
+            'python',
+            __file__,
+            str(tempcsv)
+        ]
+        subprocess.check_call(base_args)
+        try:
+            subprocess.check_call([
+                'pytest',
+                str(NYCDB_TEST_PY_PATH),
+                '-k',
+                name,
+                '-vv'
+            ])
+        finally:
+            subprocess.check_call([*base_args, '--undo'])
+    finally:
+        tempcsv.unlink()
+
+    print("I seem to be working.")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Create scaffolding for a new NYC-DB dataset."
@@ -210,6 +284,10 @@ def main():
         help='Attempt to undo the creation of the scaffolding.'
     )
     args = parser.parse_args()
+
+    if args.csvfile == 'test':
+        selftest()
+        return
 
     csvpath = Path(args.csvfile)
 
@@ -237,6 +315,9 @@ def main():
     else:
         dc.execute()
         print(f"Scaffolding created for new dataset '{dc.name}'.")
+        print(f"The scaffolding is just a starting point; you should")
+        print(f"inspect all the new/modified files and change them")
+        print(f"as needed.")
 
 
 if __name__ == '__main__':
